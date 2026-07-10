@@ -736,6 +736,7 @@
 
       <div class="admin-section-title">✏️ Editar Cardápio</div>
       <button type="button" class="btn-secondary" onclick="abrirCardapioAdmin()">Ativar edição nos itens (preço/estoque)</button>
+      <button type="button" class="btn-secondary" onclick="adicionarItemAdmin()">➕ Adicionar novo item</button>
 
       <button type="button" class="btn-secondary" style="color:#e74c3c;" onclick="sairAdmin()">Sair do modo admin</button>
     </div>
@@ -822,6 +823,7 @@ let _pausaAtiva = false;
 let _atendendo  = true;
 let _precosCustom = {};
 let _esgotados = new Set();
+let _disponibilidades = {};
 let _promoAtual = { oferta: 'DÚZIA MISTA<br>+ REFRIGERANTE 2L', preco: 64.90, cat: 'duzia' }; // placeholder inicial
 let _catExpandida = { espetos: true };
 let _duziaAlvo = 12;
@@ -928,6 +930,46 @@ function renderTodosProdutos() {
   renderListaCategoria('grid-sobremesas', PRODUTOS_SOBREMESAS, 'sobremesas');
   const destaques = [PRODUTO_SEMANA, PRODUTOS_ESPETOS[0], { ...PRODUTOS_COMBOS[2] }];
   document.getElementById('grid-destaques').innerHTML = destaques.map(renderListCard).join('');
+}
+
+/* ─── ADMIN: categorias/itens dinâmicos ─── */
+const _ARRAYS_POR_CATEGORIA = { espetos: PRODUTOS_ESPETOS, combos: PRODUTOS_COMBOS, acompanhamentos: PRODUTOS_ACOMPANHAMENTOS, bebidas: PRODUTOS_BEBIDAS, sobremesas: PRODUTOS_SOBREMESAS };
+const _NOMES_CATEGORIA = { espetos: 'Espetos', combos: 'Combos', acompanhamentos: 'Acompanhamentos', bebidas: 'Bebidas', sobremesas: 'Sobremesas' };
+let _itensCustomPorCategoria = { espetos: [], combos: [], acompanhamentos: [], bebidas: [], sobremesas: [] };
+
+function adicionarItemAdmin() {
+  const opcoes = Object.keys(_NOMES_CATEGORIA).map((k, i) => `${i + 1}) ${_NOMES_CATEGORIA[k]}`).join('\n');
+  const escolha = prompt(`Em qual categoria adicionar o item?\n${opcoes}`, '1');
+  if (escolha === null) return;
+  const chaves = Object.keys(_NOMES_CATEGORIA);
+  const cat = chaves[parseInt(escolha, 10) - 1];
+  if (!cat) { showToast('Categoria inválida.'); return; }
+  const nome = prompt('Nome do item:');
+  if (!nome || !nome.trim()) return;
+  const precoStr = prompt('Preço (ex.: 12.50):');
+  const preco = parseFloat((precoStr || '').replace(',', '.'));
+  if (isNaN(preco) || preco < 0) { showToast('Preço inválido.'); return; }
+  const desc = prompt('Descrição (opcional):') || '';
+  const icone = prompt('Emoji do item (opcional):', '🍢') || '🍢';
+  const id = 'custom-' + Date.now().toString(36);
+  const item = { id, nome: nome.trim(), preco, desc, icone };
+  _itensCustomPorCategoria[cat].push(item);
+  _ARRAYS_POR_CATEGORIA[cat].push(item);
+  renderTodosProdutos();
+  salvarEstados();
+  showToast('Item adicionado! ✅');
+}
+
+function _reaplicarItensCustom(novo) {
+  /* remove itens custom antigos das listas em memória, depois insere os atuais */
+  Object.keys(_ARRAYS_POR_CATEGORIA).forEach(cat => {
+    const arr = _ARRAYS_POR_CATEGORIA[cat];
+    for (let i = arr.length - 1; i >= 0; i--) if (String(arr[i].id).startsWith('custom-')) arr.splice(i, 1);
+  });
+  _itensCustomPorCategoria = novo || { espetos: [], combos: [], acompanhamentos: [], bebidas: [], sobremesas: [] };
+  Object.keys(_itensCustomPorCategoria).forEach(cat => {
+    (_itensCustomPorCategoria[cat] || []).forEach(item => _ARRAYS_POR_CATEGORIA[cat]?.push(item));
+  });
 }
 
 /* ─── MONTADOR DE DÚZIA (5.2) ─── */
@@ -1108,6 +1150,7 @@ function tabPontos() { _limparTabsAtivas(); document.getElementById('tab-pontos'
 function tabInfo() { openModal('info'); }
 
 function abrirWhatsappDireto() {
+  if (!_atendendo) { showToast('🔴 Estamos fechados no momento. Volte quando abrirmos para enviar sua mensagem!'); return; }
   const msg = 'Olá! Vim pelo cardápio digital e quero fazer um pedido no Espetinho do Ruivo. 🔥';
   window.open('https://wa.me/' + WHATSAPP_NUM + '?text=' + encodeURIComponent(msg), '_blank');
 }
@@ -1180,6 +1223,7 @@ function copiarPix() {
 
 function finalizarPedido() {
   if (cart.length === 0) return;
+  if (!_atendendo) { showToast('🔴 Estamos fechados no momento. Não é possível enviar pedidos agora.'); return; }
   const nome = document.getElementById('chk-nome').value.trim();
   const endereco = document.getElementById('chk-endereco').value.trim();
   const obs = document.getElementById('chk-obs').value.trim();
@@ -1304,8 +1348,43 @@ function abrirCardapioAdmin() {
       salvarEstados();
     };
     btnPreco.onclick = () => ativarEdicaoPreco(card);
+    const btnDisp = document.createElement('button');
+    btnDisp.type = 'button';
+    btnDisp.className = 'card-preco-edit-btn';
+    btnDisp.textContent = '🗓️ Disponib.';
+    btnDisp.title = 'Ex.: "Apenas aos finais de semana"';
+    btnDisp.onclick = () => ativarEdicaoDisponibilidade(card);
+    bar.appendChild(btnDisp);
     card.querySelector('.list-card-body').appendChild(bar);
   });
+}
+
+function renderDisponibilidade(card, texto) {
+  let el = card.querySelector('.card-disponibilidade');
+  if (texto) {
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'card-disponibilidade';
+      el.style.cssText = 'font-size:0.7rem;font-weight:700;color:#e67e00;margin-top:2px;';
+      const desc = card.querySelector('.list-card-desc') || card.querySelector('.list-card-body');
+      desc.insertAdjacentElement('afterend', el);
+    }
+    el.textContent = '🗓️ ' + texto;
+  } else if (el) {
+    el.remove();
+  }
+}
+
+function ativarEdicaoDisponibilidade(card) {
+  const id = card.dataset.produtoId;
+  const atual = _disponibilidades[id] || '';
+  const texto = prompt('Disponibilidade especial deste item (ex.: "Apenas aos finais de semana"). Deixe em branco para remover.', atual);
+  if (texto === null) return;
+  const val = texto.trim();
+  if (val) _disponibilidades[id] = val; else delete _disponibilidades[id];
+  renderDisponibilidade(card, val);
+  salvarEstados();
+  showToast(val ? 'Disponibilidade atualizada! ✅' : 'Disponibilidade removida.');
 }
 
 function ativarEdicaoPreco(card) {
@@ -1345,7 +1424,9 @@ function salvarEstados() {
     taxa: TAXA_ENTREGA,
     promo: _promoAtual,
     esgotados: [..._esgotados],
-    precos: _precosCustom
+    precos: _precosCustom,
+    disponibilidades: _disponibilidades,
+    itensCustomPorCategoria: _itensCustomPorCategoria
   };
   dbEstadoRef.set(estado);
 }
@@ -1376,6 +1457,13 @@ function aplicarEstado(est) {
     const priceEl = card.querySelector('.list-card-price');
     if (priceEl && !priceEl.querySelector('input') && _precosCustom[id] != null) priceEl.textContent = formatBRL(_precosCustom[id]);
   });
+  _disponibilidades = est.disponibilidades || {};
+  _reaplicarItensCustom(est.itensCustomPorCategoria);
+  renderTodosProdutos();
+  document.querySelectorAll('[data-produto-id]').forEach(card => {
+    renderDisponibilidade(card, _disponibilidades[card.dataset.produtoId] || '');
+  });
+
   document.getElementById('preco-duzia-label').textContent = formatBRL(_precosCustom['duzia'] ?? 62.00);
   document.getElementById('preco-meia-label').textContent = formatBRL(_precosCustom['meia-duzia'] ?? 34.00);
   const adPD = document.getElementById('admin-preco-duzia'); if (adPD && document.activeElement !== adPD) adPD.value = (_precosCustom['duzia'] ?? 62.00).toFixed(2);

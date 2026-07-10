@@ -651,7 +651,7 @@
 <button type="button" class="btn-topo" id="btn-topo" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" aria-label="Voltar ao topo">⬆️</button>
 
 <!-- ═══ ADMIN FAB ═══ -->
-<button type="button" class="admin-fab" id="admin-fab" onclick="abrirLoginAdmin()">⚙️</button>
+<button type="button" class="admin-fab visible" id="admin-fab" onclick="abrirLoginAdmin()">⚙️</button>
 
 <!-- ═══ FINALIZAR PEDIDO FAB ═══ -->
 <button type="button" class="cart-fab hidden" id="cart-fab" onclick="openCart()" aria-label="Finalizar pedido">
@@ -1485,11 +1485,6 @@ function carregarEstados() {
     const est = snapshot.val();
     if (est) aplicarEstado(est);
   });
-}
-
-/* ─── URL ADMIN ─── */
-if (new URLSearchParams(location.search).get('admin') === '1') {
-  document.getElementById('admin-fab').classList.add('visible');
 }
 
 /* ─── EMOJIS REAIS (estilo Apple, glossy/3D) ───

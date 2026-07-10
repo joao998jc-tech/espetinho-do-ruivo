@@ -325,9 +325,15 @@
     }
     .btn-topo.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 
-    /* ─── ADMIN FAB ─── */
-    .admin-fab { position: fixed; bottom: 76px; right: 14px; z-index: 500; background: var(--dark-alt); border: 2px solid var(--gold); color: var(--gold); border-radius: 50%; width: 42px; height: 42px; font-size: 1.05rem; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: var(--shadow); }
-    .admin-fab.visible { display: flex; }
+    /* ─── ACESSO DISCRETO AO ADMIN, no rodapé da página ─── */
+    .page-footer-admin { display: flex; justify-content: center; margin: 22px 0 10px; }
+    .footer-admin-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-sm);
+      font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 20px; cursor: pointer; opacity: 0.5;
+      transition: var(--transition);
+    }
+    .footer-admin-btn:hover { opacity: 1; color: var(--gold); border-color: var(--gold); }
 
     /* ─── FINALIZAR PEDIDO FAB ─── */
     @keyframes cart-fab-pulse { 0%,100% { transform: scale(1); } 40% { transform: scale(1.08); } }
@@ -534,6 +540,10 @@
       </div>
     </div>
 
+    <div class="page-footer-admin">
+      <button type="button" id="admin-fab" class="footer-admin-btn" onclick="abrirLoginAdmin()">ADM</button>
+    </div>
+
   </main>
 
   <!-- ═══ CARRINHO "MEU PEDIDO" ═══ -->
@@ -651,7 +661,6 @@
 <button type="button" class="btn-topo" id="btn-topo" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" aria-label="Voltar ao topo">⬆️</button>
 
 <!-- ═══ ADMIN FAB ═══ -->
-<button type="button" class="admin-fab visible" id="admin-fab" onclick="abrirLoginAdmin()">⚙️</button>
 
 <!-- ═══ FINALIZAR PEDIDO FAB ═══ -->
 <button type="button" class="cart-fab hidden" id="cart-fab" onclick="openCart()" aria-label="Finalizar pedido">
